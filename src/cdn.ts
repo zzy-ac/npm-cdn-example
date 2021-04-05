@@ -1,9 +1,8 @@
 import { service } from './service';
 import { TRegistry } from './types';
 import { fileRead } from './file-read';
+import { BASE_URL, BUILD_PATHS } from './constants';
 
-const BASE_URL = 'http://registry.npmjs.org';
-const BUILD_PATHS = ['/lib', '/dist', '/build'];
 
 const findPathIndex = (origin: string) => {
   let index = 0;
