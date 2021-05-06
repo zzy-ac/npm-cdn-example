@@ -1,15 +1,14 @@
 import { service } from './service';
 import { TRegistry } from './types';
 import { fileRead } from './file-read';
-
-const BASE_URL = 'http://registry.npmjs.org';
-const BUILD_PATHS = ['/lib', '/dist', '/build'];
+import { BASE_URL, BUILD_PATHS } from './constants';
 
 const findPathIndex = (origin: string) => {
   let index = 0;
 
   for (let path of BUILD_PATHS) {
     const currentIndex = origin.search(path);
+
     if (currentIndex > 0) {
       index = currentIndex;
       break;
@@ -40,12 +39,12 @@ export const getPackage = async (origin: string) => {
 
   if (name && !version)
     return {
-      response: `/${name}@${instance["dist-tags"].latest}${paths}`,
+      response: `/npm/${name}@${instance["dist-tags"].latest}${paths}`,
       isRedirect: true
     };
 
   return {
-    response: await fileRead(instance.versions[version].dist.tarball, paths),
+    response: await fileRead(instance.versions[version], paths),
     isRedirect: false
   }
 };

@@ -12,7 +12,7 @@ type TDist = {
   tarball: string;
 }
 
-type TVersion = {
+export type TVersion = {
   name: string,
   version: string,
   description: string,
