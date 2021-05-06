@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "outDir": "dist",
+    "esModuleInterop": true,
+    "declaration": true,
+    "skipLibCheck": true,
+    "downlevelIteration": true,
+    "lib": ["ESNext"],
+    "target": "es5"
+  }
+}
