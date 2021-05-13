@@ -1,61 +1,64 @@
 import fetch from 'node-fetch';
 import * as tar from 'tar-stream';
 import { createGunzip } from 'zlib';
-import * as fs from 'fs-extra';
+import {createReadStream, existsSync, createWriteStream, mkdirSync} from 'fs-extra';
+import {Request, Response} from 'express';
 
 import { TVersion } from './types';
 import { WRITE_PATH } from './constants';
 
-const getFile = async (name: string) => {
-  try {
-    const buffer = await fs.readFile(`${WRITE_PATH}${name}`);
-    console.log(`read file ${name}`);
-
-    return buffer.toString();
-  } catch ({ message }) {
-    console.log(`read file ${name}, error: ${message}`);
-    return null;
-  }
+function sleep(ms) {
+  ms += new Date().getTime();
+  while (new Date() < ms){}
 }
 
-const writeFile = async (name: string, data: string) => {
-  try {
-    const file = await fs.outputFile(`${WRITE_PATH}${name}`, data);
-    console.log(`write file ${name}`);
-
-    return file;
-  } catch ({ message }) {
-    console.log(`write file ${name}, error: ${message}`);
-  }
-}
-
-
-export const fileRead = (pack: TVersion, file: string) => new Promise<string>(async resolve => {
+export const fileRead = async (res: Response, pack: TVersion, file: string, req: Request) => {
+  console.log(pack);
   const filePath = `/${pack.name}/${pack.version}${file}`;
-  const cacheFile = await getFile(filePath);
+  const path = `${WRITE_PATH}${filePath}`;
+  const filePathWithoutName = path.split('/');
 
-  if (cacheFile) return resolve(cacheFile);
+  if (existsSync(path)) {
+    createReadStream(path).pipe(res);
+    console.log(`read file ${filePath}`);
+  } else {
+    const response = await fetch(pack.dist.tarball);
 
-  const response = await fetch(pack.dist.tarball);
-  const extract = tar.extract();
+    mkdirSync(filePathWithoutName.slice(0, filePathWithoutName.length - 1).join('/'), { recursive: true });
 
-  let data = '';
+    const extract = tar.extract();
 
-  extract.on('entry', (header, stream, cb) => {
-    stream.on('data', chunk => {
-      const { name } = header;
-      if (name.endsWith(file)) data += chunk;
+    const writeStream = createWriteStream(path, { flags: 'w+' });
+
+    extract.on('entry', (header, stream, next) => {
+      stream.on('data', chunk => {
+        const { name } = header;
+
+        if (name.endsWith(file)) {
+          sleep(2)
+          console.log(req.headers["user-agent"]);
+
+
+          writeStream.write(chunk);
+          res.write(chunk);
+        }
+      });
+
+      stream.on('end', () => next());
+
+      stream.on('error', () => res.send('not a package'));
+
+      stream.resume();
     });
 
-    stream.on('end', () => cb());
+    extract.on('finish', () => {
+      writeStream.end();
+      res.end();
+      console.log('end')
+    })
 
-    stream.resume();
-  });
+    response.body.pipe(createGunzip()).pipe(extract);
 
-  extract.on('finish', () => {
-    if (data) writeFile(filePath, data);
-    resolve(data);
-  });
-
-  response.body.pipe(createGunzip()).pipe(extract);
-})
+    console.log(`read file ${filePath}, not read`);
+  }
+};
